@@ -1,4 +1,4 @@
-package managerAdmin.command
+package ru.republicn.softwaredesign.fitnessclub.managerAdmin.command
 
 import java.time.LocalDateTime
 

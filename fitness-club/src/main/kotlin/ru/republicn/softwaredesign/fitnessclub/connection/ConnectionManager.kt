@@ -1,4 +1,4 @@
-package connection
+package ru.republicn.softwaredesign.fitnessclub.connection
 
 import java.sql.DriverManager
 

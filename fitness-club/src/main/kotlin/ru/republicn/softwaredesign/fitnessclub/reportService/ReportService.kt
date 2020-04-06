@@ -1,19 +1,18 @@
-package reportService
+package ru.republicn.softwaredesign.fitnessclub.reportService
 
-import reportService.query.StatisticHandler
-import reportService.query.StatisticQuery
-import java.time.LocalDateTime
+import ru.republicn.softwaredesign.fitnessclub.reportService.query.StatisticHandler
+import ru.republicn.softwaredesign.fitnessclub.reportService.query.StatisticQuery
 import java.time.LocalDateTime.now
 
 class ReportService {
 
     private val statisticHandler = StatisticHandler()
 
-    fun execute(query: StatisticQuery) {
+    fun execute(query: StatisticQuery): String {
         val userStatistic = statisticHandler.handle(query)
         val dailyStatistic = userStatistic?.getDailyStatistic()
-        println(
-            """User ${userStatistic?.userId} statistic:
+        return (
+                """User ${userStatistic?.userId} statistic:
 
             Daily
             Monday: + ${dailyStatistic!![0]}
@@ -26,7 +25,7 @@ class ReportService {
 
             User visits center every ${userStatistic.getAverageFrequency(now())} days in average
             User average visit is ${userStatistic.getAverageDuration()} minutes"""
-        )
+                )
     }
 
 }

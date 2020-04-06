@@ -1,6 +1,6 @@
-package reportService.query
+package ru.republicn.softwaredesign.fitnessclub.reportService.query
 
-import reportService.storage.ReportStorage
+import ru.republicn.softwaredesign.fitnessclub.reportService.storage.ReportStorage
 
 class StatisticHandler {
 

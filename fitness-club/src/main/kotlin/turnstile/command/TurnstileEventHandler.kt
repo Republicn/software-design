@@ -1,7 +1,7 @@
 package turnstile.command
 
-import dao.FitnessClubDaoImpl
-import reportService.storage.ReportStorage
+import ru.republicn.softwaredesign.fitnessclub.dao.FitnessClubDaoImpl
+import ru.republicn.softwaredesign.fitnessclub.reportService.storage.ReportStorage
 
 class TurnstileEventHandler(private val dao: FitnessClubDaoImpl) {
 

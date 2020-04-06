@@ -1,4 +1,4 @@
-package reportService.storage
+package ru.republicn.softwaredesign.fitnessclub.reportService.storage
 
 import java.time.LocalDateTime
 import java.time.temporal.ChronoUnit

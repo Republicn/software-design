@@ -1,6 +1,6 @@
-package managerAdmin.query
+package ru.republicn.softwaredesign.fitnessclub.managerAdmin.query
 
-import dao.FitnessClubDaoImpl
+import ru.republicn.softwaredesign.fitnessclub.dao.FitnessClubDaoImpl
 
 class ManagerQueryHandler(private val dao: FitnessClubDaoImpl) {
 

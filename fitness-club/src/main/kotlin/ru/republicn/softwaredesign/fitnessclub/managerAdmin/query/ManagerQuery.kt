@@ -1,4 +1,4 @@
-package managerAdmin.query
+package ru.republicn.softwaredesign.fitnessclub.managerAdmin.query
 
 sealed class ManagerQuery
 

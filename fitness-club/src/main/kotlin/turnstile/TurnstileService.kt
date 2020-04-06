@@ -1,6 +1,6 @@
 package turnstile
 
-import dao.FitnessClubDaoImpl
+import ru.republicn.softwaredesign.fitnessclub.dao.FitnessClubDaoImpl
 import turnstile.command.TurnstileEvent
 import turnstile.command.TurnstileEventHandler
 

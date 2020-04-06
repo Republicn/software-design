@@ -1,7 +1,8 @@
-package dao
+package ru.republicn.softwaredesign.fitnessclub.dao
 
-import connection.ConnectionManager
-import pojo.Subscription
+import ru.republicn.softwaredesign.fitnessclub.connection.ConnectionManager
+import ru.republicn.softwaredesign.fitnessclub.pojo.Subscription
+import ru.republicn.softwaredesign.fitnessclub.pojo.User
 import java.sql.Timestamp
 import java.time.LocalDateTime
 import java.time.LocalDateTime.now
@@ -15,9 +16,12 @@ class FitnessClubDaoImpl(private val connectionManager: ConnectionManager) : Fit
                 val createSubscriptionEventSql = "CREATE TYPE SubscriptionEvent AS ENUM ('CREATE', 'EXTEND');"
 
                 val createUsersTableSql =
-//                    "DROP TABLE Users CASCADE;\n" +
-//                        "DROP TABLE Subscriptions CASCADE;\n" +
-                    "CREATE TABLE IF NOT EXISTS Users(\n" +
+                    "DROP TABLE Users CASCADE;\n" +
+                            "DROP TABLE SubscriptionEvents CASCADE;\n" +
+                            "DROP TABLE TurnstileEvents CASCADE;\n" +
+                            "DROP TYPE TurnstileEvent CASCADE;\n" +
+                            "DROP TYPE SubscriptionEvent CASCADE;" +
+                            "CREATE TABLE IF NOT EXISTS Users(\n" +
                             "user_id SERIAL PRIMARY KEY,\n" +
                             "user_name VARCHAR(50) NOT NULL);"
                 val createSubscriptionEventsTableSql =
@@ -26,35 +30,63 @@ class FitnessClubDaoImpl(private val connectionManager: ConnectionManager) : Fit
                             "subscription_id INT NOT NULL,\n" +
                             "subscription_timestamp TIMESTAMP NOT NULL,\n" +
                             "subscription_event SubscriptionEvent NOT NULL,\n" +
+                            "user_id SERIAL NOT NULL,\n" +
                             "FOREIGN KEY (user_id) REFERENCES Users (user_id));"
                 val createTurnstileEventsTable =
                     "CREATE TABLE IF NOT EXISTS TurnstileEvents(\n" +
                             "event_id SERIAL PRIMARY KEY,\n" +
                             "turnstile_time TIMESTAMP NOT NULL,\n" +
                             "turnstile_event TurnstileEvent NOT NULL,\n" +
+                            "user_id SERIAL NOT NULL,\n" +
                             "FOREIGN KEY (user_id) REFERENCES Users (user_id));"
 
+                statement.execute(createUsersTableSql)
                 statement.execute(createTurnstileEventSql)
                 statement.execute(createSubscriptionEventSql)
-                statement.execute(createUsersTableSql)
                 statement.execute(createSubscriptionEventsTableSql)
                 statement.execute(createTurnstileEventsTable)
             }
         }
     }
 
-    override fun createUser(name: String) {
+    override fun createUser(name: String): Int {
         connectionManager.connect().use { connection ->
             connection.createStatement().use { statement ->
                 val sql = "INSERT INTO Users (user_name)" +
-                        "VALUES ('$name');"
+                        "VALUES ('$name')\n" +
+                        "RETURNING user_id;"
 
-                statement.execute(sql)
+                statement.executeQuery(sql).use {
+                    if (it.next()) return it.getInt("user_id")
+                }
+
+                return -1
             }
         }
     }
 
-    override fun createSubscription(userId: Int, startTime: LocalDateTime, endTime: LocalDateTime) {
+    override fun getUserById(id: Int): User {
+        connectionManager.connect().use { connection ->
+            connection.createStatement().use { statement ->
+                val sql = "SELECT user_id, user_name FROM Users\n" +
+                        "WHERE user_id = $id;"
+
+                var userId: Int
+                var userName: String
+                statement.executeQuery(sql).use {
+                    if (it.next()) {
+                        userId = it.getInt("user_id")
+                        userName = it.getString("user_name")
+                        return User(userId, userName)
+                    }
+                }
+
+                return User(-1, "Invalid user")
+            }
+        }
+    }
+
+    override fun createSubscription(userId: Int, startTime: LocalDateTime, endTime: LocalDateTime): Int {
         connectionManager.connect().use { connection ->
             connection.createStatement().use { statement ->
                 val sql = "SELECT subscription_id\n" +
@@ -63,25 +95,38 @@ class FitnessClubDaoImpl(private val connectionManager: ConnectionManager) : Fit
                         "LIMIT 1;"
 
                 statement.executeQuery(sql).use {
-                    val newIndex = if (it.next()) it.getInt("subscription_id") + 1 else 0
+                    val newIndex = if (it.next()) it.getInt("subscription_id") + 1 else 1
                     val startTimestamp = Timestamp.valueOf(startTime)
                     val createSql = "INSERT INTO SubscriptionEvents\n" +
                             "(subscription_id, subscription_timestamp, subscription_event, user_id)\n" +
-                            "VALUES ($newIndex, $startTimestamp, 'CREATE'::SubscriptionEvent, $userId);"
+                            "VALUES (?, ?, 'CREATE'::SubscriptionEvent, ?);"
 
                     val endTimestamp = Timestamp.valueOf(endTime)
                     val setEndTimeSql = "INSERT INTO SubscriptionEvents\n" +
                             "(subscription_id, subscription_timestamp, subscription_event, user_id)\n" +
-                            "VALUES ($newIndex, $endTimestamp, 'EXTEND'::SubscriptionEvent, $userId);"
+                            "VALUES (?, ?, 'EXTEND'::SubscriptionEvent, ?);"
 
-                    statement.execute(createSql)
-                    statement.execute(setEndTimeSql)
+//                    statement.execute(createSql)
+//                    statement.execute(setEndTimeSql)
+                    val prepared = connection.prepareStatement(createSql)
+                    prepared.setInt(1, newIndex)
+                    prepared.setTimestamp(2, startTimestamp)
+                    prepared.setInt(3, userId)
+                    prepared.execute()
+
+                    val prepared2 = connection.prepareStatement(setEndTimeSql)
+                    prepared2.setInt(1, newIndex)
+                    prepared2.setTimestamp(2, endTimestamp)
+                    prepared2.setInt(3, userId)
+                    prepared2.execute()
+
+                    return newIndex
                 }
             }
         }
     }
 
-    override fun extendSubscription(subscriptionId: Int, userId: Int, endTime: LocalDateTime) {
+    override fun extendSubscription(subscriptionId: Int, userId: Int, endTime: LocalDateTime): Int {
         connectionManager.connect().use { connection ->
             connection.createStatement().use { statement ->
                 val endTimestamp = Timestamp.valueOf(endTime)
@@ -90,6 +135,7 @@ class FitnessClubDaoImpl(private val connectionManager: ConnectionManager) : Fit
                         "VALUES ($subscriptionId, $endTimestamp, 'EXTEND'::SubscriptionEvent, $userId);"
 
                 statement.execute(sql)
+                return subscriptionId
             }
         }
     }
@@ -104,7 +150,7 @@ class FitnessClubDaoImpl(private val connectionManager: ConnectionManager) : Fit
                     var first = true
                     var startTime: LocalDateTime = now()
                     var endTime: LocalDateTime = now()
-                    var userId = 0
+                    var userId = 1
                     while (it.next()) {
                         if (first) {
                             startTime = it.getTimestamp("subscription_timestamp").toLocalDateTime()

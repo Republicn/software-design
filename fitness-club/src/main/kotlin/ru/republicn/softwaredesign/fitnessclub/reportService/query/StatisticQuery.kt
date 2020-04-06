@@ -1,4 +1,4 @@
-package reportService.query
+package ru.republicn.softwaredesign.fitnessclub.reportService.query
 
 sealed class StatisticQuery
 
