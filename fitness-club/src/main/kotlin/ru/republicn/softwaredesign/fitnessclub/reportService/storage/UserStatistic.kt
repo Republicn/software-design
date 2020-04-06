@@ -9,6 +9,7 @@ class UserStatistic(val userId: Int, val startDate: LocalDateTime, var endDate: 
     private val dailyStatistic: ArrayList<Int> = ArrayList()
     private var summaryDuration: Long = 0
     private var countEntry = 0
+    private var countExit = 0
     var lastEntryTime: LocalDateTime? = null
 
     init {
@@ -21,11 +22,10 @@ class UserStatistic(val userId: Int, val startDate: LocalDateTime, var endDate: 
 
     fun getAverageFrequency(curTime: LocalDateTime): Double {
         val time = if (curTime.isBefore(endDate)) curTime else endDate
-
         return 1.0 * (ChronoUnit.DAYS.between(startDate, time)) / countEntry
     }
 
-    fun getAverageDuration(): Double = 1.0 * summaryDuration / countEntry
+    fun getAverageDuration(): Double = 1.0 * summaryDuration / countExit
 
     fun addDuration(duration: Long) {
         summaryDuration += duration
@@ -34,6 +34,10 @@ class UserStatistic(val userId: Int, val startDate: LocalDateTime, var endDate: 
     fun addEntry(day: Int) {
         countEntry++
         dailyStatistic[day]++
+    }
+
+    fun exit() {
+        countExit++
     }
 
 

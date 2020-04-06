@@ -15,13 +15,14 @@ object ReportStorage {
     fun enter(id: Int, enterTime: LocalDateTime) {
         val userStatistic = wholeStatistic[id]
         userStatistic?.lastEntryTime = enterTime
-        userStatistic?.addEntry(enterTime.dayOfWeek.value)
+        userStatistic?.addEntry(enterTime.dayOfWeek.value - 1)
     }
 
     fun exit(id: Int, exitTime: LocalDateTime) {
         val userStatistic = wholeStatistic[id]
         if (userStatistic?.lastEntryTime != null) {
-            userStatistic.addDuration(ChronoUnit.MINUTES.between(exitTime, userStatistic.lastEntryTime))
+            userStatistic.exit()
+            userStatistic.addDuration(ChronoUnit.MINUTES.between(userStatistic.lastEntryTime, exitTime))
         }
     }
 

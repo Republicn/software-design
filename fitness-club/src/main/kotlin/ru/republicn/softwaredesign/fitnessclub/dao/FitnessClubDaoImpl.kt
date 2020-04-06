@@ -74,14 +74,14 @@ class FitnessClubDaoImpl(private val connectionManager: ConnectionManager) : Fit
                 var userId: Int
                 var userName: String
                 statement.executeQuery(sql).use {
+
                     if (it.next()) {
                         userId = it.getInt("user_id")
                         userName = it.getString("user_name")
                         return User(userId, userName)
-                    }
+                    } else throw Exception("No user with id $id")
                 }
 
-                return User(-1, "Invalid user")
             }
         }
     }
@@ -106,8 +106,6 @@ class FitnessClubDaoImpl(private val connectionManager: ConnectionManager) : Fit
                             "(subscription_id, subscription_timestamp, subscription_event, user_id)\n" +
                             "VALUES (?, ?, 'EXTEND'::SubscriptionEvent, ?);"
 
-//                    statement.execute(createSql)
-//                    statement.execute(setEndTimeSql)
                     val prepared = connection.prepareStatement(createSql)
                     prepared.setInt(1, newIndex)
                     prepared.setTimestamp(2, startTimestamp)
@@ -128,15 +126,15 @@ class FitnessClubDaoImpl(private val connectionManager: ConnectionManager) : Fit
 
     override fun extendSubscription(subscriptionId: Int, userId: Int, endTime: LocalDateTime): Int {
         connectionManager.connect().use { connection ->
-            connection.createStatement().use { statement ->
-                val endTimestamp = Timestamp.valueOf(endTime)
-                val sql = "INSERT INTO SubscriptionEvents\n" +
-                        "(subscription_id, subscription_timestamp, subscription_event, user_id)\n" +
-                        "VALUES ($subscriptionId, $endTimestamp, 'EXTEND'::SubscriptionEvent, $userId);"
+            val endTimestamp = Timestamp.valueOf(endTime)
+            val sql = "INSERT INTO SubscriptionEvents\n" +
+                    "(subscription_id, subscription_timestamp, subscription_event, user_id)\n" +
+                    "VALUES ($subscriptionId, ?, 'EXTEND'::SubscriptionEvent, $userId);"
+            val stmt = connection.prepareStatement(sql)
+            stmt.setTimestamp(1, endTimestamp)
+            stmt.execute()
 
-                statement.execute(sql)
-                return subscriptionId
-            }
+            return subscriptionId
         }
     }
 
@@ -174,7 +172,9 @@ class FitnessClubDaoImpl(private val connectionManager: ConnectionManager) : Fit
                 val timestamp = Timestamp.valueOf(enterTime)
                 val sql = "INSERT INTO TurnstileEvents\n" +
                         "(turnstile_time, turnstile_event, user_id)\n" +
-                        "VALUES ($timestamp, '$event'::TurnstileEvent, $userId);"
+                        "VALUES (?, '$event'::TurnstileEvent, $userId);"
+                val prepared = connection.prepareStatement(sql)
+                prepared.setTimestamp(1, timestamp)
                 if (event == "enter") {
                     val checkSql = "SELECT turnstile_time\n" +
                             "FROM TurnstileEvents\n" +
@@ -184,7 +184,7 @@ class FitnessClubDaoImpl(private val connectionManager: ConnectionManager) : Fit
                         if (it.next()) {
                             val endTime = it.getTimestamp("turnstile_time").toLocalDateTime()
                             if (endTime.isAfter(enterTime)) {
-                                statement.execute(sql)
+                                prepared.execute()
                             } else {
                                 throw Exception("Subscription is not activated")
                             }
@@ -193,11 +193,10 @@ class FitnessClubDaoImpl(private val connectionManager: ConnectionManager) : Fit
                         }
                     }
                 } else {
-                    statement.execute(sql)
+                    prepared.execute()
                 }
             }
         }
     }
-
 
 }
